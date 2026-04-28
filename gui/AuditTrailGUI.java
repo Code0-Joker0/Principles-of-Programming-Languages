@@ -2,120 +2,156 @@ package gui;
 
 import db.DBConnection;
 import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
+import javax.swing.table.*;
 import java.awt.*;
 import java.sql.*;
 
-public class AuditTrailGUI extends JFrame {
-    private JTable table;
+public class AuditTrailGUI extends JPanel {
+
+    private final MainDashboard dashboard;
+    private JTable            table;
     private DefaultTableModel model;
-    private JTextField tfTable, tfRecordId, tfNotes;
-    private JComboBox<String> cbOperation;
+    private JTextField        tfSearch;
+    private JComboBox<String> cbOpFilter;
+    private JLabel            lblCount;
 
-    public AuditTrailGUI() {
-        setTitle("Audit Trail Management");
-        setSize(750, 450);
-        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        setLocationRelativeTo(null);
+    public AuditTrailGUI(MainDashboard dashboard) {
+        this.dashboard = dashboard;
+        setBackground(Theme.BG_DARK);
+        setLayout(new BorderLayout());
+        setBorder(BorderFactory.createEmptyBorder(24, 28, 24, 28));
+        add(buildHeader(), BorderLayout.NORTH);
+        add(buildTable(),  BorderLayout.CENTER);
+        add(buildInfo(),   BorderLayout.SOUTH);
+        load(null, "ALL");
+    }
 
-        model = new DefaultTableModel(new String[]{"Audit ID", "Table", "Operation", "Record ID", "Performed At", "Notes"}, 0) {
+    private JPanel buildHeader() {
+        JPanel p = new JPanel(new BorderLayout());
+        p.setBackground(Theme.BG_DARK);
+        p.setBorder(BorderFactory.createEmptyBorder(0, 0, 18, 0));
+
+        JLabel title = new JLabel("Audit Trail");
+        title.setFont(Theme.FONT_TITLE);
+        title.setForeground(Theme.TEXT_PRIMARY);
+        lblCount = new JLabel("0 records");
+        lblCount.setFont(Theme.FONT_SMALL);
+        lblCount.setForeground(Theme.MUTED);
+
+        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        left.setBackground(Theme.BG_DARK);
+        left.add(title); left.add(Box.createHorizontalStrut(12)); left.add(lblCount);
+
+        tfSearch = Theme.styledField("Search by table or notes...");
+        tfSearch.setPreferredSize(new Dimension(240, 36));
+        tfSearch.getDocument().addDocumentListener(UserGUI.docListener(this::reload));
+
+        cbOpFilter = Theme.styledCombo("ALL", "INSERT", "UPDATE", "DELETE");
+        cbOpFilter.setPreferredSize(new Dimension(120, 36));
+        cbOpFilter.addActionListener(e -> reload());
+
+        JButton btnRefresh = Theme.ghostButton("Refresh");
+        btnRefresh.addActionListener(e -> reload());
+
+        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        right.setBackground(Theme.BG_DARK);
+        right.add(tfSearch); right.add(cbOpFilter); right.add(btnRefresh);
+
+        p.add(left, BorderLayout.WEST);
+        p.add(right, BorderLayout.EAST);
+        return p;
+    }
+
+    private JPanel buildTable() {
+        model = new DefaultTableModel(
+            new String[]{"Audit ID", "Table", "Operation", "Record ID", "Performed At", "Notes"}, 0) {
             public boolean isCellEditable(int r, int c) { return false; }
         };
         table = new JTable(model);
-        table.getSelectionModel().addListSelectionListener(e -> populateFields());
+        Theme.styleTable(table);
 
-        tfTable = new JTextField(); tfRecordId = new JTextField(); tfNotes = new JTextField();
-        cbOperation = new JComboBox<>(new String[]{"INSERT", "UPDATE", "DELETE"});
+        // Operation badge
+        table.getColumnModel().getColumn(2).setCellRenderer(new DefaultTableCellRenderer() {
+            @Override public Component getTableCellRendererComponent(
+                    JTable t, Object v, boolean sel, boolean foc, int row, int col) {
+                JPanel cell = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
+                cell.setBackground(sel ? Theme.BG_SELECTED : (row % 2 == 0 ? Theme.BG_TABLE_ROW : Theme.BG_TABLE_ALT));
+                String op = v == null ? "" : v.toString();
+                cell.add(Theme.badge(op, Theme.operationColor(op)));
+                return cell;
+            }
+        });
 
-        JPanel form = new JPanel(new GridLayout(4, 2, 5, 5));
-        form.add(new JLabel("Table Name:")); form.add(tfTable);
-        form.add(new JLabel("Operation:")); form.add(cbOperation);
-        form.add(new JLabel("Record ID:")); form.add(tfRecordId);
-        form.add(new JLabel("Notes:")); form.add(tfNotes);
+        // Table name — monospace accent
+        table.getColumnModel().getColumn(1).setCellRenderer(new DefaultTableCellRenderer() {
+            @Override public Component getTableCellRendererComponent(
+                    JTable t, Object v, boolean sel, boolean foc, int row, int col) {
+                super.getTableCellRendererComponent(t, v, sel, foc, row, col);
+                setBackground(sel ? Theme.BG_SELECTED : (row % 2 == 0 ? Theme.BG_TABLE_ROW : Theme.BG_TABLE_ALT));
+                setForeground(sel ? Color.WHITE : Theme.ACCENT);
+                setFont(Theme.FONT_MONO);
+                setBorder(BorderFactory.createEmptyBorder(0, 12, 0, 12));
+                return this;
+            }
+        });
 
-        JButton btnAdd = new JButton("Add");
-        JButton btnUpdate = new JButton("Update");
-        JButton btnDelete = new JButton("Delete");
-        JButton btnRefresh = new JButton("Refresh");
+        // Notes — muted
+        table.getColumnModel().getColumn(5).setCellRenderer(new DefaultTableCellRenderer() {
+            @Override public Component getTableCellRendererComponent(
+                    JTable t, Object v, boolean sel, boolean foc, int row, int col) {
+                super.getTableCellRendererComponent(t, v, sel, foc, row, col);
+                setBackground(sel ? Theme.BG_SELECTED : (row % 2 == 0 ? Theme.BG_TABLE_ROW : Theme.BG_TABLE_ALT));
+                setForeground(sel ? Color.WHITE : Theme.TEXT_SECONDARY);
+                setFont(Theme.FONT_BODY);
+                setBorder(BorderFactory.createEmptyBorder(0, 12, 0, 12));
+                return this;
+            }
+        });
 
-        btnAdd.addActionListener(e -> addAudit());
-        btnUpdate.addActionListener(e -> updateAudit());
-        btnDelete.addActionListener(e -> deleteAudit());
-        btnRefresh.addActionListener(e -> loadAudits());
-
-        JPanel btnPanel = new JPanel();
-        btnPanel.add(btnAdd); btnPanel.add(btnUpdate);
-        btnPanel.add(btnDelete); btnPanel.add(btnRefresh);
-
-        JPanel south = new JPanel(new BorderLayout());
-        south.add(form, BorderLayout.CENTER);
-        south.add(btnPanel, BorderLayout.SOUTH);
-
-        add(new JScrollPane(table), BorderLayout.CENTER);
-        add(south, BorderLayout.SOUTH);
-
-        loadAudits();
-        setVisible(true);
+        JPanel p = new JPanel(new BorderLayout());
+        p.setBackground(Theme.BG_DARK);
+        p.add(Theme.styledScroll(table), BorderLayout.CENTER);
+        return p;
     }
 
-    private void loadAudits() {
+    private JPanel buildInfo() {
+        JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 8));
+        p.setBackground(Theme.BG_DARK);
+        JLabel info = new JLabel("\uD83D\uDEC1  Audit records are generated automatically when users, transactions, or gateways are modified.");
+        info.setFont(Theme.FONT_SMALL);
+        info.setForeground(Theme.MUTED);
+        p.add(info);
+        return p;
+    }
+
+    private void reload() {
+        load(tfSearch.getText(), (String) cbOpFilter.getSelectedItem());
+    }
+
+    private void load(String search, String opFilter) {
         model.setRowCount(0);
-        try (Statement st = DBConnection.getConnection().createStatement();
-             ResultSet rs = st.executeQuery("SELECT * FROM audit_trail")) {
+        StringBuilder sql = new StringBuilder("SELECT * FROM audit_trail WHERE 1=1");
+        if (search != null && !search.isBlank())
+            sql.append(" AND (table_name LIKE ? OR notes LIKE ?)");
+        if (opFilter != null && !opFilter.equals("ALL"))
+            sql.append(" AND operation=?");
+        sql.append(" ORDER BY audit_id DESC");
+        try (Connection c = DBConnection.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql.toString())) {
+            int idx = 1;
+            if (search != null && !search.isBlank()) {
+                ps.setString(idx++, "%" + search + "%");
+                ps.setString(idx++, "%" + search + "%");
+            }
+            if (opFilter != null && !opFilter.equals("ALL"))
+                ps.setString(idx, opFilter);
+            ResultSet rs = ps.executeQuery();
             while (rs.next())
-                model.addRow(new Object[]{rs.getInt(1), rs.getString(2), rs.getString(3), rs.getInt(4), rs.getTimestamp(5), rs.getString(6)});
-        } catch (SQLException e) { showError(e); }
+                model.addRow(new Object[]{rs.getInt(1), rs.getString(2), rs.getString(3),
+                    rs.getInt(4), rs.getTimestamp(5), rs.getString(6)});
+            lblCount.setText(model.getRowCount() + " record" + (model.getRowCount() != 1 ? "s" : ""));
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, e.getMessage(), "DB Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
-
-    private void populateFields() {
-        int row = table.getSelectedRow();
-        if (row < 0) return;
-        tfTable.setText((String) model.getValueAt(row, 1));
-        cbOperation.setSelectedItem(model.getValueAt(row, 2));
-        tfRecordId.setText(String.valueOf(model.getValueAt(row, 3)));
-        tfNotes.setText((String) model.getValueAt(row, 5));
-    }
-
-    private void addAudit() {
-        String sql = "INSERT INTO audit_trail (table_name, operation, record_id, notes) VALUES (?,?,?,?)";
-        try (PreparedStatement ps = DBConnection.getConnection().prepareStatement(sql)) {
-            ps.setString(1, tfTable.getText().trim());
-            ps.setString(2, (String) cbOperation.getSelectedItem());
-            ps.setInt(3, Integer.parseInt(tfRecordId.getText().trim()));
-            ps.setString(4, tfNotes.getText().trim());
-            ps.executeUpdate();
-            loadAudits(); clearFields();
-        } catch (Exception e) { JOptionPane.showMessageDialog(this, e.getMessage()); }
-    }
-
-    private void updateAudit() {
-        int row = table.getSelectedRow();
-        if (row < 0) { JOptionPane.showMessageDialog(this, "Select a row first."); return; }
-        int id = (int) model.getValueAt(row, 0);
-        String sql = "UPDATE audit_trail SET table_name=?, operation=?, record_id=?, notes=? WHERE audit_id=?";
-        try (PreparedStatement ps = DBConnection.getConnection().prepareStatement(sql)) {
-            ps.setString(1, tfTable.getText().trim());
-            ps.setString(2, (String) cbOperation.getSelectedItem());
-            ps.setInt(3, Integer.parseInt(tfRecordId.getText().trim()));
-            ps.setString(4, tfNotes.getText().trim());
-            ps.setInt(5, id);
-            ps.executeUpdate();
-            loadAudits(); clearFields();
-        } catch (Exception e) { JOptionPane.showMessageDialog(this, e.getMessage()); }
-    }
-
-    private void deleteAudit() {
-        int row = table.getSelectedRow();
-        if (row < 0) { JOptionPane.showMessageDialog(this, "Select a row first."); return; }
-        int id = (int) model.getValueAt(row, 0);
-        if (JOptionPane.showConfirmDialog(this, "Delete audit record " + id + "?") != JOptionPane.YES_OPTION) return;
-        try (PreparedStatement ps = DBConnection.getConnection().prepareStatement("DELETE FROM audit_trail WHERE audit_id=?")) {
-            ps.setInt(1, id);
-            ps.executeUpdate();
-            loadAudits(); clearFields();
-        } catch (SQLException e) { showError(e); }
-    }
-
-    private void clearFields() { tfTable.setText(""); tfRecordId.setText(""); tfNotes.setText(""); }
-    private void showError(SQLException e) { JOptionPane.showMessageDialog(this, e.getMessage(), "DB Error", JOptionPane.ERROR_MESSAGE); }
 }

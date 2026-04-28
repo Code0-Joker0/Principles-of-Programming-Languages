@@ -1,81 +1,55 @@
 package TransactionPackage;
 
-import java.io.*;
-import java.util.HashMap;
+import db.DBConnection;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class TransactionManager {
-    private HashMap<Integer, Transaction> transactions = new HashMap<>();
-    private static final String FILE_PATH = "transactions.txt";
 
-    public synchronized void addTransaction(Transaction t) {
-        transactions.put(t.getTransactionId(), t);
-        System.out.println("Transaction added: " + t.getTransactionId());
-    }
-
-    public synchronized Transaction getTransaction(int id) throws TransactionNotFoundException {
-        Transaction t = transactions.get(id);
-        if (t == null) throw new TransactionNotFoundException(id);
-        return t;
-    }
-
-    public synchronized void updateTransaction(int id, double newAmount, String newGateway)
-            throws TransactionNotFoundException {
-        Transaction t = getTransaction(id);
-        t.setAmount(newAmount);
-        t.setGatewayUsed(newGateway);
-        System.out.println("Transaction updated: " + id);
-    }
-
-    public synchronized void updateStatus(int id, String status) throws TransactionNotFoundException {
-        getTransaction(id).setStatus(status);
-    }
-
-    public synchronized void deleteTransaction(int id) throws TransactionNotFoundException {
-        if (transactions.remove(id) == null) throw new TransactionNotFoundException(id);
-        System.out.println("Transaction deleted: " + id);
-    }
-
-    public synchronized void displayAllTransactions() {
-        if (transactions.isEmpty()) {
-            System.out.println("No transactions found.");
-            return;
-        }
-        transactions.values().forEach(System.out::println);
-    }
-
-    public synchronized void saveToFile() {
-        try (PrintWriter pw = new PrintWriter(new BufferedWriter(new FileWriter(FILE_PATH)))) {
-            for (Transaction t : transactions.values()) {
-                pw.println(t.getTransactionId() + "," + t.getUserName() + "," +
-                        t.getAmount() + "," + t.getGatewayUsed() + "," +
-                        t.getStatus() + "," + t.getTimestamp());
-            }
-            System.out.println("Transactions saved to " + FILE_PATH);
-        } catch (IOException e) {
-            System.out.println("Error saving file: " + e.getMessage());
+    public void add(int userId, int gatewayId, double amount, String status) throws SQLException {
+        String sql = "INSERT INTO transactions (user_id, gateway_id, amount, status) VALUES (?,?,?,?)";
+        try (PreparedStatement ps = DBConnection.getConnection().prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            ps.setInt(2, gatewayId);
+            ps.setDouble(3, amount);
+            ps.setString(4, status);
+            ps.executeUpdate();
         }
     }
 
-    public synchronized void loadFromFile() {
-        File file = new File(FILE_PATH);
-        if (!file.exists()) {
-            System.out.println("No saved file found.");
-            return;
+    public void update(int id, int userId, int gatewayId, double amount, String status) throws SQLException {
+        String sql = "UPDATE transactions SET user_id=?, gateway_id=?, amount=?, status=? WHERE transaction_id=?";
+        try (PreparedStatement ps = DBConnection.getConnection().prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            ps.setInt(2, gatewayId);
+            ps.setDouble(3, amount);
+            ps.setString(4, status);
+            ps.setInt(5, id);
+            ps.executeUpdate();
         }
-        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                String[] parts = line.split(",");
-                if (parts.length < 6) continue;
-                int id = Integer.parseInt(parts[0].trim());
-                Transaction t = new Transaction(id, parts[1].trim(),
-                        Double.parseDouble(parts[2].trim()), parts[3].trim());
-                t.setStatus(parts[4].trim());
-                transactions.put(id, t);
-            }
-            System.out.println("Transactions loaded from " + FILE_PATH);
-        } catch (IOException e) {
-            System.out.println("Error loading file: " + e.getMessage());
+    }
+
+    public void delete(int id) throws SQLException {
+        try (PreparedStatement ps = DBConnection.getConnection().prepareStatement(
+                "DELETE FROM transactions WHERE transaction_id=?")) {
+            ps.setInt(1, id);
+            ps.executeUpdate();
         }
+    }
+
+    public List<Object[]> getAll() throws SQLException {
+        List<Object[]> rows = new ArrayList<>();
+        String sql = "SELECT t.transaction_id, u.name, g.gateway_name, t.amount, t.status, t.created_at " +
+                     "FROM transactions t " +
+                     "JOIN users u ON t.user_id = u.user_id " +
+                     "JOIN gateways g ON t.gateway_id = g.gateway_id";
+        try (Statement st = DBConnection.getConnection().createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next())
+                rows.add(new Object[]{rs.getInt(1), rs.getString(2), rs.getString(3),
+                                      rs.getDouble(4), rs.getString(5), rs.getTimestamp(6)});
+        }
+        return rows;
     }
 }

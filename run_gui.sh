@@ -1,12 +1,30 @@
 #!/bin/bash
-# Compile and run the Payment Gateway Swing GUI
+# Works on Linux and macOS regardless of MySQL Connector/J version
+cd "$(dirname "$0")"
 
-JAR="lib/mysql-connector-j-8.0.33.jar"
-SRC="db/DBConnection.java gui/UserGUI.java gui/TransactionGUI.java gui/GatewayGUI.java gui/PaymentLogGUI.java gui/AuditTrailGUI.java gui/MainDashboard.java"
+JAR=$(ls lib/mysql-connector*.jar 2>/dev/null | head -1)
+if [ -z "$JAR" ]; then
+    echo "ERROR: No MySQL connector JAR found in lib/"
+    exit 1
+fi
 
+SRC="db/DBConnection.java \
+     gui/Theme.java \
+     TransactionPackage/TransactionNotFoundException.java \
+     TransactionPackage/Transaction.java \
+     TransactionPackage/TransactionManager.java \
+     gui/UserGUI.java \
+     gui/GatewayGUI.java \
+     gui/TransactionGUI.java \
+     gui/PaymentLogGUI.java \
+     gui/AuditTrailGUI.java \
+     gui/MainDashboard.java \
+     Main.java"
+
+echo "==> Using JAR: $JAR"
 echo "==> Compiling..."
 javac -cp ".:$JAR" $SRC
 if [ $? -ne 0 ]; then echo "Compilation failed."; exit 1; fi
 
 echo "==> Running..."
-java -cp ".:$JAR" gui.MainDashboard
+java -cp ".:$JAR" Main

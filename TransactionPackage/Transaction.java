@@ -1,40 +1,28 @@
 package TransactionPackage;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-
 public class Transaction {
     private int transactionId;
-    private String userName;
+    private int userId;
+    private int gatewayId;
     private double amount;
-    private String status;       // PENDING / SUCCESS / FAILED
-    private String gatewayUsed;
-    private String timestamp;
+    private String status;
 
-    public Transaction(int transactionId, String userName, double amount, String gatewayUsed) {
+    public Transaction(int transactionId, int userId, int gatewayId, double amount, String status) {
         this.transactionId = transactionId;
-        this.userName = userName;
+        this.userId = userId;
+        this.gatewayId = gatewayId;
         this.amount = amount;
-        this.gatewayUsed = gatewayUsed;
-        this.status = "PENDING";
-        this.timestamp = LocalDateTime.now()
-                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        this.status = status;
     }
 
-    public int getTransactionId()       { return transactionId; }
-    public String getUserName()         { return userName; }
-    public double getAmount()           { return amount; }
-    public String getStatus()           { return status; }
-    public String getGatewayUsed()      { return gatewayUsed; }
-    public String getTimestamp()        { return timestamp; }
+    public int getTransactionId() { return transactionId; }
+    public int getUserId()        { return userId; }
+    public int getGatewayId()     { return gatewayId; }
+    public double getAmount()     { return amount; }
+    public String getStatus()     { return status; }
 
-    public void setStatus(String status)           { this.status = status; }
-    public void setAmount(double amount)           { this.amount = amount; }
-    public void setGatewayUsed(String gatewayUsed) { this.gatewayUsed = gatewayUsed; }
-
-    @Override
-    public String toString() {
-        return String.format("ID:%-4d | User: %-10s | Amount: $%-8.2f | Gateway: %-10s | Status: %-7s | %s",
-                transactionId, userName, amount, gatewayUsed, status, timestamp);
-    }
+    public void setUserId(int userId)     { this.userId = userId; }
+    public void setGatewayId(int gId)     { this.gatewayId = gId; }
+    public void setAmount(double amount)  { this.amount = amount; }
+    public void setStatus(String status)  { this.status = status; }
 }
