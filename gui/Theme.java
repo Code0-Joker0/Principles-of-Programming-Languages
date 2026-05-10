@@ -7,26 +7,26 @@ import java.awt.*;
 import java.awt.event.*;
 
 public class Theme {
-    // ── Palette ──────────────────────────────────────────────────────────────
-    public static final Color BG_DARK      = new Color(15,  17,  26);
-    public static final Color BG_CARD      = new Color(24,  27,  40);
-    public static final Color BG_SIDEBAR   = new Color(18,  20,  32);
-    public static final Color BG_INPUT     = new Color(30,  34,  52);
-    public static final Color BG_TABLE_ROW = new Color(28,  32,  46);
-    public static final Color BG_TABLE_ALT = new Color(22,  26,  38);
-    public static final Color BG_HOVER     = new Color(40,  45,  65);
-    public static final Color BG_SELECTED  = new Color(55,  90, 160);
+    // ── Palette (Light Theme) ─────────────────────────────────────────────────
+    public static final Color BG_DARK      = new Color(245, 246, 250); // page background
+    public static final Color BG_CARD      = new Color(255, 255, 255); // card / form panel
+    public static final Color BG_SIDEBAR   = new Color(255, 255, 255); // sidebar
+    public static final Color BG_INPUT     = new Color(248, 249, 252); // input fields
+    public static final Color BG_TABLE_ROW = new Color(255, 255, 255); // table even rows
+    public static final Color BG_TABLE_ALT = new Color(245, 247, 252); // table odd rows
+    public static final Color BG_HOVER     = new Color(229, 235, 255); // hover state
+    public static final Color BG_SELECTED  = new Color(59, 130, 246);  // selected row
 
-    public static final Color ACCENT       = new Color(99, 149, 255);
-    public static final Color ACCENT_HOVER = new Color(120, 170, 255);
-    public static final Color SUCCESS      = new Color(52, 199, 120);
-    public static final Color WARNING      = new Color(255, 184,  64);
-    public static final Color DANGER       = new Color(255,  75,  75);
-    public static final Color MUTED        = new Color(120, 130, 160);
+    public static final Color ACCENT       = new Color(37,  99, 235);  // primary blue
+    public static final Color ACCENT_HOVER = new Color(29,  78, 216);  // darker blue on hover
+    public static final Color SUCCESS      = new Color(22, 163,  74);  // green
+    public static final Color WARNING      = new Color(202, 138,   4); // amber
+    public static final Color DANGER       = new Color(220,  38,  38); // red
+    public static final Color MUTED        = new Color(107, 114, 128); // grey
 
-    public static final Color TEXT_PRIMARY   = new Color(230, 235, 255);
-    public static final Color TEXT_SECONDARY = new Color(150, 160, 195);
-    public static final Color BORDER_COLOR   = new Color(40,  46,  70);
+    public static final Color TEXT_PRIMARY   = new Color(17,  24,  39); // near black
+    public static final Color TEXT_SECONDARY = new Color(75,  85,  99); // dark grey
+    public static final Color BORDER_COLOR   = new Color(209, 213, 219); // light grey border
 
     // ── Fonts ─────────────────────────────────────────────────────────────────
     public static final Font FONT_TITLE   = new Font("Segoe UI", Font.BOLD,  20);
@@ -268,15 +268,15 @@ public class Theme {
         };
     }
 
-    /** Apply dark L&F defaults globally */
+    /** Apply light L&F defaults globally */
     public static void applyGlobal() {
         UIManager.put("OptionPane.background",          BG_CARD);
         UIManager.put("Panel.background",               BG_CARD);
         UIManager.put("OptionPane.messageForeground",   TEXT_PRIMARY);
         UIManager.put("Button.background",              BG_INPUT);
         UIManager.put("Button.foreground",              TEXT_PRIMARY);
-        UIManager.put("ScrollBar.thumb",                BG_HOVER);
-        UIManager.put("ScrollBar.track",                BG_CARD);
+        UIManager.put("ScrollBar.thumb",                BORDER_COLOR);
+        UIManager.put("ScrollBar.track",                BG_DARK);
         UIManager.put("ComboBox.background",            BG_INPUT);
         UIManager.put("ComboBox.foreground",            TEXT_PRIMARY);
         UIManager.put("TextField.background",           BG_INPUT);
